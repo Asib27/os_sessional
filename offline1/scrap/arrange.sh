@@ -7,6 +7,16 @@ answer="$4"
 option1="$5"
 option2="$6"
 
+if [[ "$4" == "" ]] ; then 
+    echo "USAGE:";
+    echo "./organize.sh <submission folder> <target folder> <test folder> <answer folder> [-v] [-noexecute]";
+    echo "";
+    echo "-v: verbose";
+    echo "-noexecute: do not execute code files";
+    exit
+fi
+
+
 isV="0"
 isNoexecute="0"
 
