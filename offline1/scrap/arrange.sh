@@ -13,7 +13,6 @@ isNoexecute="0"
 if [[ "$option1" == "-v" || "$option2" == "-v" ]] ; then
     isV="1"
 fi
-
 if [[ "$option1" == "-noexecute" || "$option2" == "-noexecute" ]] ; then
     isNoexecute="1"
 fi
@@ -30,7 +29,6 @@ fi
 
 for zipname in "$submission"/*.zip ; do 
     roll=$( echo "$zipname" | cut -d '_' -f5 | cut -d '.' -f1 )
-
     unzip "$zipname" -d extracted > /dev/null
 
     rightCnt=0
@@ -52,19 +50,21 @@ for zipname in "$submission"/*.zip ; do
         outfile="$target/c/$roll/main.out"
         find -name '*.c' -exec bash -c 'cp "$1" "$0"' $filename '{}' '+';
 
-        gcc "$filename" -o "$outfile" ;
+        if [[ $isNoexecute == "0" ]] ; then 
+            gcc "$filename" -o "$outfile" ;
 
-        for i in $(seq 1 $noTest) ; do 
-            "./$outfile" < "$test/test$i.txt" > "$target/c/$roll/out$i.txt"
-            
-            if (( $(diff "$target/c/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
-                rightCnt=$(( rightCnt + 1 ))
-            else
-                wrongCnt=$(( wrongCnt + 1 ))
-            fi
-        done
+            for i in $(seq 1 $noTest) ; do 
+                "./$outfile" < "$test/test$i.txt" > "$target/c/$roll/out$i.txt"
+                
+                if (( $(diff "$target/c/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
+                    rightCnt=$(( rightCnt + 1 ))
+                else
+                    wrongCnt=$(( wrongCnt + 1 ))
+                fi
+            done
 
-        echo "$roll,C,$rightCnt,$wrongCnt" >> "$result";
+            echo "$roll,C,$rightCnt,$wrongCnt" >> "$result";
+        fi
     fi
 
     if (( $(find -path '*extracted/*.java' | wc -l) != 0 )); then
@@ -72,19 +72,21 @@ for zipname in "$submission"/*.zip ; do
         filename="$target/java/$roll/main.java";
         find -name '*.java' -exec bash -c 'cp "$1" "$0"' $filename '{}' '+';    
 
-        javac "$filename"  
+        if [[ $isNoexecute == "0" ]] ; then 
+            javac "$filename"  
 
-        for i in $(seq 1 $noTest) ; do 
-            java -cp "$target/java/$roll" Main < "$test/test$i.txt" > "$target/java/$roll/out$i.txt"
-            
-            if (( $(diff "$target/java/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
-                rightCnt=$(( rightCnt + 1 ))
-            else
-                wrongCnt=$(( wrongCnt + 1 ))
-            fi
-        done    
+            for i in $(seq 1 $noTest) ; do 
+                java -cp "$target/java/$roll" Main < "$test/test$i.txt" > "$target/java/$roll/out$i.txt"
+                
+                if (( $(diff "$target/java/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
+                    rightCnt=$(( rightCnt + 1 ))
+                else
+                    wrongCnt=$(( wrongCnt + 1 ))
+                fi
+            done    
 
-        echo "$roll,Java,$rightCnt,$wrongCnt" >> "$result";
+            echo "$roll,Java,$rightCnt,$wrongCnt" >> "$result";
+        fi
     fi
 
     if (( $(find -path '*extracted/*.py' | wc -l) != 0 )); then
@@ -94,17 +96,19 @@ for zipname in "$submission"/*.zip ; do
 
         chmod +x "$filename"
 
-        for i in $(seq 1 $noTest) ; do 
-            python3 "$filename"  < "$test/test$i.txt" > "$target/python/$roll/out$i.txt"
-            
-            if (( $(diff "$target/python/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
-                rightCnt=$(( rightCnt + 1 ))
-            else
-                wrongCnt=$(( wrongCnt + 1 ))
-            fi
-        done   
+        if [[ $isNoexecute == "0" ]] ; then 
+            for i in $(seq 1 $noTest) ; do 
+                python3 "$filename"  < "$test/test$i.txt" > "$target/python/$roll/out$i.txt"
+                
+                if (( $(diff "$target/python/$roll/out$i.txt" "$answer/ans$i.txt" | wc -l) == 0 )) ; then
+                    rightCnt=$(( rightCnt + 1 ))
+                else
+                    wrongCnt=$(( wrongCnt + 1 ))
+                fi
+            done   
 
-        echo "$roll,Python,$rightCnt,$wrongCnt" >> "$result";
+            echo "$roll,Python,$rightCnt,$wrongCnt" >> "$result";
+        fi
     fi
 
     rm -rf extracted/*
