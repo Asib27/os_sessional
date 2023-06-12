@@ -6,7 +6,9 @@ test="$3"
 answer="$4"
 
 mkdir -p "$target/c" "$target/java" "$target/python"
-touch "$target/result.csv"
+result="$target/result.csv"
+
+echo "student_id,type,matched,not_matched" > "$result"
 
 noTest=$(ls "$test/" | wc -l)
 echo $noTest
@@ -37,6 +39,8 @@ for zipname in "$submission"/*.zip ; do
                 wrongCnt=$(( wrongCnt + 1 ))
             fi
         done
+
+        echo "$roll,C,$rightCnt,$wrongCnt" >> "$result";
     fi
 
     if (( $(find -path '*extracted/*.java' | wc -l) != 0 )); then
@@ -55,6 +59,8 @@ for zipname in "$submission"/*.zip ; do
                 wrongCnt=$(( wrongCnt + 1 ))
             fi
         done    
+
+        echo "$roll,Java,$rightCnt,$wrongCnt" >> "$result";
     fi
 
     if (( $(find -path '*extracted/*.py' | wc -l) != 0 )); then
@@ -73,9 +79,9 @@ for zipname in "$submission"/*.zip ; do
                 wrongCnt=$(( wrongCnt + 1 ))
             fi
         done   
-    fi
 
-    echo $rightCnt $wrongCnt
+        echo "$roll,Python,$rightCnt,$wrongCnt" >> "$result";
+    fi
 
     rm -rf extracted/*
 done
