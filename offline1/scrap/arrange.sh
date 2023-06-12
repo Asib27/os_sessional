@@ -4,6 +4,19 @@ submission="$1"
 target="$2"
 test="$3"
 answer="$4"
+option1="$5"
+option2="$6"
+
+isV="0"
+isNoexecute="0"
+
+if [[ "$option1" == "-v" || "$option2" == "-v" ]] ; then
+    isV="1"
+fi
+
+if [[ "$option1" == "-noexecute" || "$option2" == "-noexecute" ]] ; then
+    isNoexecute="1"
+fi
 
 mkdir -p "$target/c" "$target/java" "$target/python"
 result="$target/result.csv"
@@ -11,16 +24,27 @@ result="$target/result.csv"
 echo "student_id,type,matched,not_matched" > "$result"
 
 noTest=$(ls "$test/" | wc -l)
-echo $noTest
+if [[ $isV == "1" ]] ; then
+    echo "Found $noTest test files"
+fi
 
 for zipname in "$submission"/*.zip ; do 
     roll=$( echo "$zipname" | cut -d '_' -f5 | cut -d '.' -f1 )
-    echo $zipname $roll
 
     unzip "$zipname" -d extracted > /dev/null
 
     rightCnt=0
     wrongCnt=0
+
+
+    if [[ $isV == "1" ]] ; then
+        echo "Organizing files of $roll";
+
+        if [[ $isNoexecute == "0" ]] ; then 
+            echo "Executing files of $roll";
+        fi 
+    fi
+
 
     if (( $(find -path '*extracted/*.c' | wc -l) != 0 )); then
         mkdir -p "$target/c/$roll";
