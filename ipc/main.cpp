@@ -31,16 +31,24 @@ struct Student{
     pthread_t tid;
     int start;
     bool leader;
+    sem_t sem;
+    int waiting_at_ps;
 
     Student(int sid, int group, bool group_lead)
         : group(group), sid(sid), leader(group_lead)
     {
         start = rand() % 10 + 1;
+        sem_init(&sem, 0, 0);
+        waiting_at_ps = -1;
+    }
+
+    ~Student(){
+        sem_destroy(&sem);
     }
 };
 pthread_mutex_t print_mutex;
 
-const int N_PS = 4; // number of print station
+const int N_PS = 1; // number of print station
 const int N_STAFF = 2;
 int PS_TIME, BS_TIME, SS_TIME; // printing, binding, submission station time
 
@@ -59,23 +67,84 @@ int n_submission;
 
 
 void *studentActivity(void *arg){
-    Student s = *(Student *)arg;
+    Student *sptr = (Student *)arg;
+    Student s = *sptr;
 
     // ensure randomness in start
     sleep(s.start);
 
+    int ps = s.group % N_PS;
+
+    // checking lock availability
+    pthread_mutex_lock(&ps_mutex[ps]);
+    if(ps_empty[ps]){
+        sem_post(&sptr->sem);
+        ps_empty[ps] = false;
+    }else{
+        sptr->waiting_at_ps = ps;
+    }
+    pthread_mutex_unlock(&ps_mutex[ps]);
+
+    // printing 
     pthread_mutex_lock(&print_mutex);
     cout << "Student " << s.sid << " has arrived at the print station at time " << timer.get_time() << endl;
     pthread_mutex_unlock(&print_mutex);
 
-    pthread_mutex_lock(&ps_mutex[s.group%N_PS]);
+    sem_wait(&sptr->sem);
+
+    // started printing
+    pthread_mutex_lock(&print_mutex);
+    cout << "Student " << s.sid << " has started printing at time " << timer.get_time() << endl;
+    pthread_mutex_unlock(&print_mutex);
     sleep(PS_TIME);
 
+    // finished printing
     pthread_mutex_lock(&print_mutex);
     cout << "Student " << s.sid << " has finished printing at time " << timer.get_time() << endl;
     pthread_mutex_unlock(&print_mutex);
 
+
+    pthread_mutex_lock(&ps_mutex[ps]);
+    ps_empty[ps] = true;
+    sptr->waiting_at_ps = -1;
+    bool wakeup_done = false;
+    
+    // Group mates
+    for(auto i: students){
+        if(i->group == s.group && i->waiting_at_ps == ps){
+            ps_empty[ps] = false;
+            i->waiting_at_ps = -1;
+            sem_post(&i->sem);
+            wakeup_done = true;
+
+            pthread_mutex_lock(&print_mutex);
+            cout << "Student " << s.sid << " has called groupmate " << i->sid << endl;
+            
+            pthread_mutex_unlock(&print_mutex);
+
+            break;
+
+        }
+    }
+
+    // Others at the printing station
+    if(!wakeup_done){
+        for(auto i: students){
+            if(i->group != s.group && i->waiting_at_ps == ps){
+                ps_empty[ps] = false;
+                i->waiting_at_ps = -1;
+                sem_post(&i->sem);
+
+                pthread_mutex_lock(&print_mutex);
+                cout << "Student " << s.sid << " has called " << i->sid << endl;
+                pthread_mutex_unlock(&print_mutex);
+                break;
+
+            }
+        }
+    }
     pthread_mutex_unlock(&ps_mutex[s.group%N_PS]);
+
 
     if(!s.leader)
         return nullptr;
@@ -109,6 +178,7 @@ void *studentActivity(void *arg){
     // submission
     pthread_rwlock_wrlock(&ss_rwlock);
 
+    sleep(SS_TIME);
     n_submission++;
     pthread_mutex_lock(&print_mutex);
     cout << "Group " << s.group << " has submitted the report at time " << timer.get_time() << endl;
