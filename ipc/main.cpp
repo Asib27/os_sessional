@@ -4,8 +4,14 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <random>
+#include <iomanip>
 
 using namespace std;
+
+std::random_device rd;
+std::mt19937 gen(rd());
+std::poisson_distribution<> poisson(5);
 
 class Timer{
     time_t start_time;
@@ -37,7 +43,7 @@ struct Student{
     Student(int sid, int group, bool group_lead)
         : group(group), sid(sid), leader(group_lead)
     {
-        start = rand() % 10 + 1;
+        start = poisson(gen) ; //rand() % 10 + 1;
         sem_init(&sem, 0, 0);
         waiting_at_ps = -1;
     }
