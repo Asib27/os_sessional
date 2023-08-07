@@ -48,7 +48,7 @@ struct Student{
 };
 pthread_mutex_t print_mutex;
 
-const int N_PS = 1; // number of print station
+const int N_PS = 4; // number of print station
 const int N_STAFF = 2;
 int PS_TIME, BS_TIME, SS_TIME; // printing, binding, submission station time
 
@@ -73,7 +73,7 @@ void *studentActivity(void *arg){
     // ensure randomness in start
     sleep(s.start);
 
-    int ps = s.group % N_PS;
+    int ps = s.sid % N_PS;
 
     // checking lock availability
     pthread_mutex_lock(&ps_mutex[ps]);
@@ -87,7 +87,7 @@ void *studentActivity(void *arg){
 
     // printing 
     pthread_mutex_lock(&print_mutex);
-    cout << "Student " << s.sid << " has arrived at the print station at time " << timer.get_time() << endl;
+    cout << "Student " << s.sid << " has arrived at the print station " << ps << " at time " << timer.get_time() << endl;
     pthread_mutex_unlock(&print_mutex);
 
     sem_wait(&sptr->sem);
@@ -119,7 +119,6 @@ void *studentActivity(void *arg){
 
             pthread_mutex_lock(&print_mutex);
             cout << "Student " << s.sid << " has called groupmate " << i->sid << endl;
-            
             pthread_mutex_unlock(&print_mutex);
 
             break;
@@ -138,12 +137,20 @@ void *studentActivity(void *arg){
                 pthread_mutex_lock(&print_mutex);
                 cout << "Student " << s.sid << " has called " << i->sid << endl;
                 pthread_mutex_unlock(&print_mutex);
+
+                wakeup_done = true;
                 break;
 
             }
         }
     }
-    pthread_mutex_unlock(&ps_mutex[s.group%N_PS]);
+
+    if(!wakeup_done){
+        pthread_mutex_lock(&print_mutex);
+        cout << "No one to wake up by " << s.sid << " at ps " << ps << endl;
+        pthread_mutex_unlock(&print_mutex);
+    }
+    pthread_mutex_unlock(&ps_mutex[ps]);
 
 
     if(!s.leader)
@@ -223,7 +230,7 @@ int main() {
 
     timer.start();
     for(int i = 0; i < N; i++){
-        Student *t = new Student(i, i/M, i % M == 0);
+        Student *t = new Student(i, i/M, i % M == M-1);
         students.push_back(t);
 
         pthread_create(&t->tid, NULL, studentActivity, (void *)t);
